@@ -46,7 +46,7 @@ client.on("interactionCreate", async (interaction) => {
 
             const collector = message.createReactionCollector({ filter: collectorFilter, time: 30000, dispose: true });
 
-            const maxPlayers = 1;
+            const maxPlayers = 6; // should be 6 for anything other than testing
             collector.on("collect", async (reaction, user) => {
                 // edit the gameQueue and the message to include the usernames of people who reply
                 if (gameQueue.length < maxPlayers) {
