@@ -1,9 +1,16 @@
 import * as Discord from "discord.js";
 import { LoveLetter } from "./loveLetter";
+import { slashRegister } from "./slashRegistry";
 
 require("dotenv").config();
 
-const client = new Discord.Client({ intents: ["Guilds", "GuildMessages", "GuildMessageReactions"] });
+// gimme all of the intents I want em all fuck these stupid errors I get because my bot doesnt have permissions whats security
+// (go back and figure out which intents are necessary, guild messages, guilds, guildmessagereactions, and one more for dm reactions idk what yet)
+const client = new Discord.Client({
+    intents: Object.keys(Discord.GatewayIntentBits).map((a) => {
+        return Discord.GatewayIntentBits[a];
+    })
+});
 
 client.on("ready", () => {
     console.log("Bot is ready :O");
@@ -11,34 +18,20 @@ client.on("ready", () => {
 
 // registers the slash commands individually for each server the bot joins.
 // its possible to register the commands without the serverID, but that takes an hour to go through and I no wanna during testing
-// client.on("guildCreate", (guild) => {
-//     // slashRegister(guild.id);
-// });
+client.on("guildCreate", (guild) => {
+    slashRegister(guild.id);
+});
 
 client.on("interactionCreate", async (interaction) => {
     if (interaction.isCommand()) {
-        if (interaction.commandName === "ping") {
-            interaction.reply({ content: "pong" }); // ephemeral: true
-        }
-        if (interaction.commandName === "invisible") {
-            interaction.reply({ content: "WAOW!! Only YOU can see this message!!!", ephemeral: true });
-        }
         if (interaction.commandName === "startgame") {
-            /**
-             * create message to get people into the love letter game
-             * probably an embed that you can react to join on
-             * put every player that reacts to the message into an array, and if the array is 2-6 players long, start the round
-             * pass the array of playerIDs, & the channelID (?) to LoveLetter()
-             */
             // the original content of the message
             const defaultContent = "React to this message to play Love Letter! \n\nQueued to play:";
 
             const message = await interaction.reply({ content: defaultContent, fetchReply: true });
-            if (!(message instanceof Discord.Message)) return;
 
             // reacts to the message so that others can react to it
             message.react("💌");
-            // message.react("1️⃣");
 
             // detects when a user reacts to the message, and when it
             let gameQueue: Discord.User[] = [];
@@ -51,33 +44,70 @@ client.on("interactionCreate", async (interaction) => {
 
             collector.on("collect", async (reaction, user) => {
                 // edit the gameQueue and the message to include the usernames of people who reply
-                gameQueue.push(user);
+                if (gameQueue.length < 6) {
+                    gameQueue.push(user);
 
-                let queueString = "";
-                for (const user of gameQueue) {
-                    queueString += "\n" + user.username; // change to be user nickname
+                    let queueString = "";
+                    for (const user of gameQueue) {
+                        queueString += "\n" + user.username; // change to be user nickname
+                    }
+
+                    await interaction.editReply(defaultContent + queueString);
+                } else {
+                    // remove the reaction, and warn that the max of 6 players has been reached
+                    const userReactions = message.reactions.cache.filter(reaction => reaction.users.cache.has(user.id));
+
+                    for (const reaction of userReactions.values()) {
+                        await reaction.users.remove(user.id);
+                    }
+
+                    message.channel.send({ content: "The max amount of players has been reached, if another player leaves before the game starts, you will be able to join" });
                 }
-
-                await interaction.editReply(defaultContent + queueString);
             });
 
             collector.on("remove", async (reaction, user) => {
-                // this is just gameQueue.remove(gameQueue.indexOf(user)) but that doesnt exist in typescript so I gotta do this shit
-                gameQueue = gameQueue.slice(0, gameQueue.indexOf(user)).concat(gameQueue.slice(gameQueue.indexOf(user) + 1));
+                // removes the user from the gamequeue
+                if (gameQueue.length !== 6) {
+                    gameQueue.splice(gameQueue.indexOf(user), 1);
 
-                let queueString = "";
-                for (const user of gameQueue) {
-                    queueString += "\n" + user.username; // change to be user nickname
+                    let queueString = "";
+                    for (const user of gameQueue) {
+                        queueString += "\n" + user.username; // change to be user nickname
+                    }
+
+                    await interaction.editReply(defaultContent + queueString);
                 }
-
-                await interaction.editReply(defaultContent + queueString);
             });
 
-            collector.on("end", (collected) => {
-                message.channel.send("30 seconds has passed, no more players being collected");
+
+            collector.on("end", async (collected) => {
                 collector.stop();
-                // interaction.followUp("30 seconds has passed, no more players being collected");
-                LoveLetter(gameQueue, message);
+                if (gameQueue.length > 1) {
+                    message.channel.send("30 seconds has passed, game is starting!");
+                    LoveLetter(gameQueue, message);
+                } else {
+                    message.channel.send("Not enough players joined, Love letter requires 2-6 players");
+                }
+            });
+        }
+
+        if (interaction.commandName === "github") {
+            interaction.reply({ content: "The code for this bot can be found at https://github.com/rmedcraft/LoveLetter \n\nYou can find my other projects at https://github.com/rmedcraft" });
+        }
+
+        if (interaction.commandName === "infocard") {
+            interaction.reply({
+                content:
+                    "**9 - Princess** (x1): Out of the round if you play/discard.\n" +
+                    "**8 - Countess** (x1): Must play if you have King or Prince.\n" +
+                    "**7 - King** (x1): Trade hands.\n" +
+                    "**6 - Chancellor** (x2): Draw & return 2 cards.\n" +
+                    "**5 - Prince** (x2): Discard a hand & redraw.\n" +
+                    "**4 - Handmaid** (x2): Immune to other cards until your next turn.\n" +
+                    "**3 - Baron** (x2): Compare hands.\n" +
+                    "**2 - Priest** (x2): Look at a hand.\n" +
+                    "**1 - Guard** (x6): Guess a hand.\n" +
+                    "**0 - Spy** (x2): Gain favor if no one else plays/discards a Spy."
             });
         }
     }

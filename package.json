@@ -9,8 +9,8 @@
         "undici": "^6.19.8",
         "web-streams-polyfill": "^4.0.0"
     },
-    "name": "bot",
-    "version": "1.0.0",
+    "name": "love-letter-bot",
+    "version": "0.1.0",
     "main": "src/index.ts",
     "devDependencies": {
         "@types/node": "^22.5.0",
@@ -22,7 +22,7 @@
     "scripts": {
         "start": "npm run build && node dist/index.js",
         "build": "tsc ",
-        "refresh": "echo 'node src/slashRegistry.ts'"
+        "refresh": "npm run build && node dist/slashTest.js"
     },
     "keywords": [],
     "author": "",
