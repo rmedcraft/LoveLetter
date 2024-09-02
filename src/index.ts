@@ -4,12 +4,16 @@ import { slashRegister } from "./slashRegistry";
 
 require("dotenv").config();
 
-// gimme all of the intents I want em all fuck these stupid errors I get because my bot doesnt have permissions whats security
-// (go back and figure out which intents are necessary, guild messages, guilds, guildmessagereactions, and one more for dm reactions idk what yet)
+// leaving this commented out, if theres ever an error that u cant figure out, uncomment this and itll probably go away, then figure out which intent ur missing
+// const client = new Discord.Client({
+//     intents: Object.keys(Discord.GatewayIntentBits).map((a) => {
+//         return Discord.GatewayIntentBits[a];
+//     })
+// });
+
+// ugh, security :/
 const client = new Discord.Client({
-    intents: Object.keys(Discord.GatewayIntentBits).map((a) => {
-        return Discord.GatewayIntentBits[a];
-    })
+    intents: ["Guilds", "GuildMessages", "GuildMessageReactions", "DirectMessageReactions"]
 });
 
 client.on("ready", () => {
@@ -42,9 +46,10 @@ client.on("interactionCreate", async (interaction) => {
 
             const collector = message.createReactionCollector({ filter: collectorFilter, time: 30000, dispose: true });
 
+            const maxPlayers = 1;
             collector.on("collect", async (reaction, user) => {
                 // edit the gameQueue and the message to include the usernames of people who reply
-                if (gameQueue.length < 6) {
+                if (gameQueue.length < maxPlayers) {
                     gameQueue.push(user);
 
                     let queueString = "";
@@ -67,7 +72,7 @@ client.on("interactionCreate", async (interaction) => {
 
             collector.on("remove", async (reaction, user) => {
                 // removes the user from the gamequeue
-                if (gameQueue.length !== 6) {
+                if (gameQueue.length !== maxPlayers) {
                     gameQueue.splice(gameQueue.indexOf(user), 1);
 
                     let queueString = "";
