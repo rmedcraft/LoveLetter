@@ -1,10 +1,10 @@
 import * as Discord from "discord.js";
 
-export async function LoveLetter(gameQueue: Discord.User[], message: Discord.Message) {
+export async function LoveLetter(gameQueue: Discord.GuildMember[], message: Discord.Message) {
     // gets all the dms here since you cant make constructors async
-    const userToDMMap = new Map<Discord.User, Discord.DMChannel>();
-    for (const user of gameQueue) {
-        userToDMMap.set(user, await user.createDM());
+    const userToDMMap = new Map<Discord.GuildMember, Discord.DMChannel>();
+    for (const member of gameQueue) {
+        userToDMMap.set(member, await member.user.createDM());
     }
 
     const game = new Game(message, userToDMMap);
@@ -17,18 +17,18 @@ export async function LoveLetter(gameQueue: Discord.User[], message: Discord.Mes
  * Class to run the game of love letter
  */
 class Game {
-    // stuff that gets reset for each round
+    // stuff that changes throughout the round
     private deck: Deck;
     private players: Player[];
     private message: Discord.Message; // to get the channel the game was started in
     private burn: number;
 
-    // stuff that doesn't get reset & stays the same throughout the game
+    // stuff that stays constant throughout the round, and only changes after the round is over
     private permPlayers: Player[]; // a list of players that they dont get deleted from when they die
     private winCondition: number; // number of favors needed to win the full game
     private gameWinners: Player[]; // a list of players that win the game, the game is over when this has anyone in it.
 
-    constructor(message: Discord.Message, userMap: Map<Discord.User, Discord.DMChannel>) {
+    constructor(message: Discord.Message, userMap: Map<Discord.GuildMember, Discord.DMChannel>) {
         this.deck = new Deck();
         this.deck.shuffle();
 
@@ -543,7 +543,7 @@ class Game {
  * Class for one player in the game, corresponding to a discord user
  */
 class Player {
-    private user: Discord.User;
+    private member: Discord.GuildMember;
     private card: number;
     private favors: number;
 
@@ -554,8 +554,8 @@ class Player {
 
     private dm: Discord.DMChannel | null;
 
-    constructor(user: Discord.User, card: number, game: Game, dm: Discord.DMChannel) {
-        this.user = user;
+    constructor(member: Discord.GuildMember, card: number, game: Game, dm: Discord.DMChannel) {
+        this.member = member;
         this.card = card;
         this.favors = 0;
 
@@ -569,11 +569,15 @@ class Player {
 
     // I would like for this to be their nickname at some point, but for now I can't figure that out
     public getUsername() {
-        return this.user.username;
+        return this.member.displayName;
+    }
+
+    public getMember() {
+        return this.member;
     }
 
     public getUser() {
-        return this.user;
+        return this.member.user;
     }
 
     public getDM() {

@@ -37,7 +37,7 @@ client.on("interactionCreate", async (interaction) => {
             // reacts to the message so that others can react to it
             message.react("💌");
 
-            let gameQueue: Discord.User[] = [];
+            let gameQueue: Discord.GuildMember[] = [];
 
             const collectorFilter = (reaction, user) => {
                 return reaction.emoji.name === "💌" && !user.bot;
@@ -47,13 +47,17 @@ client.on("interactionCreate", async (interaction) => {
 
             const maxPlayers = 6; // should be 6 for anything other than testing
             collector.on("collect", async (reaction, user) => {
-                // edit the gameQueue and the message to include the usernames of people who reply
+                // edit the gameQueue and the message to include the nicknames of people who reply
+
+                // guild member corresponding to the user that reacted (this is to get the user's guild nickname instead of the username)
+                const member = reaction.message.guild.members.cache.find(member => member.id === user.id);
+
                 if (gameQueue.length < maxPlayers) {
-                    gameQueue.push(user);
+                    gameQueue.push(member);
 
                     let queueString = "";
-                    for (const user of gameQueue) {
-                        queueString += "\n" + user.username; // change to be user nickname
+                    for (const member of gameQueue) {
+                        queueString += "\n" + member.displayName;
                     }
 
                     await interaction.editReply(defaultContent + queueString);
@@ -69,14 +73,14 @@ client.on("interactionCreate", async (interaction) => {
                 }
             });
 
-            collector.on("remove", async (reaction, user) => {
+            collector.on("remove", async (reaction, user: Discord.User, member: Discord.GuildMember) => {
                 // removes the user from the gamequeue
                 if (gameQueue.length !== maxPlayers) {
-                    gameQueue.splice(gameQueue.indexOf(user), 1);
+                    gameQueue.splice(gameQueue.indexOf(member), 1);
 
                     let queueString = "";
-                    for (const user of gameQueue) {
-                        queueString += "\n" + user.username; // change to be user nickname
+                    for (const member of gameQueue) {
+                        queueString += "\n" + member.displayName;
                     }
 
                     await interaction.editReply(defaultContent + queueString);
