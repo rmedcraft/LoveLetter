@@ -30,14 +30,13 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isCommand()) {
         if (interaction.commandName === "startgame") {
             // the original content of the message
-            const defaultContent = "React to this message to play Love Letter! \n\nQueued to play:";
+            const defaultContent = "React to this message to play Love Letter! The game will begin in 30 seconds! \n\nQueued to play:";
 
             const message = await interaction.reply({ content: defaultContent, fetchReply: true });
 
             // reacts to the message so that others can react to it
             message.react("💌");
 
-            // detects when a user reacts to the message, and when it
             let gameQueue: Discord.User[] = [];
 
             const collectorFilter = (reaction, user) => {

@@ -167,7 +167,6 @@ class Game {
             //     this.gameLoop();
             // });
         } else {
-            this.sendMessage("Game is over!");
             let messageContent = "Game is over!\n\n";
 
             if (this.getPlayers().length === 1) {
@@ -325,6 +324,20 @@ class Game {
                         this.sendMessage("You can't join a game that's already started, but you can create another game by running the `/startgame` command!");
                     } else {
                         yesList.push(userPlayer);
+
+                        // remove the player from the noList if they were in the noList
+                        if (noList.includes(userPlayer)) {
+                            noList.splice(noList.indexOf(userPlayer), 1);
+                            const userReactions = message.reactions.cache.filter(reaction => reaction.users.cache.has(user.id));
+
+                            for (const reaction of userReactions.values()) {
+                                if (reaction.emoji.name === "❌") {
+                                    await reaction.users.remove(user.id);
+                                }
+                            }
+                        }
+
+
                         let yesString = "\n\nYes: ";
                         for (const player of yesList) {
                             yesString += "\n" + player.getUsername();
@@ -403,6 +416,18 @@ class Game {
                         this.sendMessage("You can't leave a game you aren't in! ");
                     } else {
                         noList.push(userPlayer);
+
+                        // remove the player from the yesList if they were in the yesList
+                        if (yesList.includes(userPlayer)) {
+                            yesList.splice(yesList.indexOf(userPlayer), 1);
+                            const userReactions = message.reactions.cache.filter(reaction => reaction.users.cache.has(user.id));
+
+                            for (const reaction of userReactions.values()) {
+                                if (reaction.emoji.name === "✅") {
+                                    await reaction.users.remove(user.id);
+                                }
+                            }
+                        }
 
                         let yesString = "\n\nYes: ";
                         for (const player of yesList) {
