@@ -1,4 +1,5 @@
 import * as Discord from "discord.js";
+import { cardEmbed, numToCard, numToEmbed } from "./cardConverters";
 
 export async function LoveLetter(gameQueue: Discord.GuildMember[], message: Discord.Message) {
     // gets all the dms here since you cant make constructors async
@@ -9,7 +10,6 @@ export async function LoveLetter(gameQueue: Discord.GuildMember[], message: Disc
 
     const game = new Game(message, userToDMMap);
     game.gameLoop();
-    // runs once the game is over
 }
 
 
@@ -39,7 +39,12 @@ class Game {
         userMap.forEach((dm, user) => {
             const startingCard = this.deck.draw();
 
-            dm.send({ content: "Your first card was the " + numToCard(startingCard) + "!" });
+            // dm.send({ content: "Your first card was the " + numToCard(startingCard) + "!" });
+            const cardEmbed = numToEmbed(startingCard, "Your first card was the " + numToCard(startingCard) + "!");
+
+            // sometimes this will send after the drawn card for the first player because sending an embed is async. 
+            // this is typically fixed by adding await, but you cant have await in a constructor since a constructor cant be async :/
+            dm.send({ embeds: [cardEmbed.embed], files: [cardEmbed.file] });
 
             const player = new Player(user, startingCard, this, dm);
             this.players.push(player);
@@ -76,6 +81,11 @@ class Game {
         return this.message.channel.send({ content: message });
     }
 
+    public sendEmbed(message: cardEmbed) {
+
+        return this.message.channel.send({ embeds: [message.embed], files: [message.file] });
+    }
+
     public getBurn() {
         return this.burn;
     }
@@ -94,7 +104,11 @@ class Game {
             // this.message.channel.send({ content: player.getUsername() + "'s Turn!\n\nThey're thinking about their next move..." });
             this.sendMessage(player.getUsername() + "'s Turn!\n\nThey're thinking about their next move...");
 
-            this.sendMessage("🃏 There are **" + this.getDeck().cardsLeft() + "** cards left in the deck 🃏");
+            if (this.getDeck().cardsLeft() === 1) {
+                this.sendMessage("🃏 There is **1** card left in the deck 🃏");
+            } else {
+                this.sendMessage("🃏 There are **" + this.getDeck().cardsLeft() + "** cards left in the deck 🃏");
+            }
 
             // check for countess before printing the message
             let countessLocked = false;
@@ -107,22 +121,19 @@ class Game {
 
             let messageContent = "";
             if (countessLocked) {
-                messageContent = "You drew the " +
-                    numToCard(newCard) +
-                    "!\n\nReact '🟥' to play the " +
+                messageContent = "React '🟥' to play the " +
                     numToCard(cardArr.at(0)) +
                     "\n\nYou aren't allowed to play the " +
                     numToCard(cardArr.at(1));
             } else {
-                messageContent = "You drew the " +
-                    numToCard(newCard) +
-                    "!\n\nReact '🟥' to play the " +
+                messageContent = "React '🟥' to play the " +
                     numToCard(player.getCard()) +
                     "\n\nReact '🟩' to play the " +
                     numToCard(newCard);
             }
 
             // handles the player's next move in DMs
+            await player.sendDMEmbed(numToEmbed(newCard, "You drew the " + numToCard(newCard)));
             const dmMessage = await player.sendDM(messageContent);
             await dmMessage.react("🟥");
             if (!countessLocked) {
@@ -137,8 +148,8 @@ class Game {
                 return reaction.emoji.name === "🟩" && !user.bot && !countessLocked;
             };
 
-            const oldCardCollector = dmMessage.createReactionCollector({ filter: oldCardFilter, time: 120000 });
-            const newCardCollector = dmMessage.createReactionCollector({ filter: newCardFilter, time: 120000 });
+            const oldCardCollector = dmMessage.createReactionCollector({ filter: oldCardFilter });
+            const newCardCollector = dmMessage.createReactionCollector({ filter: newCardFilter });
 
             oldCardCollector.on("collect", async (reaction, user) => {
                 if (countessLocked) {
@@ -259,7 +270,8 @@ class Game {
 
                 this.sendMessage(messageContent);
 
-                this.sendMessage("The burn card was a " + numToCard(this.getBurn()));
+                // this.sendMessage("The burn card was a " + numToCard(this.getBurn()));
+                await this.sendEmbed(numToEmbed(this.getBurn(), "The burn card was a " + numToCard(this.getBurn())));
 
             }
 
@@ -487,6 +499,7 @@ class Game {
                 yesCollector.on("end", () => {
                     if (timeout) {
                         this.sendMessage("60 seconds has passed, starting next round!");
+
                         this.players.length = 0; // WHAT!!!!!
                         this.permPlayers.length = 0;
 
@@ -512,15 +525,16 @@ class Game {
     /**
      * Mostly repeats the constructor to setup the next round
      */
-    public setupNextRound() {
+    public async setupNextRound() {
         if (this.players.length < 2) {
             this.sendMessage("There aren't enough players to play another round :/");
         } else {
             this.deck = new Deck();
             this.deck.shuffle();
-            this.players.forEach((player) => {
+            this.players.forEach(async (player) => {
                 player.setCard(this.deck.draw());
-                player.sendDM("Your first card was the " + numToCard(player.getCard()) + "!");
+                // player.sendDM("Your first card was the " + numToCard(player.getCard()) + "!");
+                await player.sendDMEmbed(numToEmbed(player.getCard(), "Your first card was the " + numToCard(player.getCard()) + "!"));
             });
 
             this.burn = this.deck.draw();
@@ -543,12 +557,12 @@ class Game {
  * Class for one player in the game, corresponding to a discord user
  */
 class Player {
-    private member: Discord.GuildMember;
-    private card: number;
+    public readonly member: Discord.GuildMember;
+    public card: number;
     private favors: number;
 
-    private handmaid: boolean;
-    private spy: boolean;
+    public handmaid: boolean;
+    public spy: boolean;
 
     private game: Game;
 
@@ -567,7 +581,6 @@ class Player {
         this.dm = dm;
     }
 
-    // I would like for this to be their nickname at some point, but for now I can't figure that out
     public getUsername() {
         return this.member.displayName;
     }
@@ -580,12 +593,12 @@ class Player {
         return this.member.user;
     }
 
-    public getDM() {
-        return this.dm;
-    }
-
     public sendDM(message: string) {
         return this.dm.send({ content: message });
+    }
+
+    public sendDMEmbed(message: cardEmbed) {
+        return this.dm.send({ embeds: [message.embed], files: [message.file] });
     }
 
     public gainFavor() {
@@ -614,6 +627,8 @@ class Player {
 
     public playSpy() {
         this.spy = true;
+        this.game.sendMessage(this.getUsername() + " now has a spy active!");
+        this.sendDM("You now have a spy active!");
     }
 
     /**
@@ -654,6 +669,7 @@ class Player {
             this.sendDM("You can't use the " + numToCard(card) + " on anyone, you play it to no effect.");
             this.game.gameLoop();
         } else {
+            this.game.sendMessage(this.getUsername() + " is thinking...");
             const dmMessage = await this.dm.send({ content: "Who do you want to use the " + numToCard(card) + " on?\n" + targetStr });
 
             for (let i = 0; i < numTargets; i++) {
@@ -668,7 +684,7 @@ class Player {
                     return reaction.emoji.name === emojiArr.at(i) && !user.bot;
                 });
 
-                collectorArr.push(dmMessage.createReactionCollector({ filter: filterArr.at(i), time: 120000 }));
+                collectorArr.push(dmMessage.createReactionCollector({ filter: filterArr.at(i) }));
             }
 
             // run the collectors for all of the reactions
@@ -705,8 +721,6 @@ class Player {
             case 1:
                 // create another dm with the 9 options for what you can guess
 
-                this.game.sendMessage(this.getUsername() + " is thinking...");
-
                 const dmMessage = await this.sendDM(
                     "What do you think " + target.getUsername() + " has?\n\n" +
                     "0️⃣: Spy\n" +
@@ -739,7 +753,7 @@ class Player {
                         return reaction.emoji.name === emoji && !user.bot;
                     });
 
-                    collectorArr.push(dmMessage.createReactionCollector({ filter: filterArr.at(emojiArr.indexOf(emoji)), time: 120000 }));
+                    collectorArr.push(dmMessage.createReactionCollector({ filter: filterArr.at(emojiArr.indexOf(emoji)) }));
                 }
 
                 // run the collectors for all of the reactions
@@ -754,11 +768,16 @@ class Player {
                         const guessedCard = emojiToCard.get(emojiArr.at(i));
 
                         this.game.sendMessage(this.getUsername() + " thinks " + target.getUsername() + " has a " + numToCard(guessedCard) + "!");
+                        this.sendDM("You guessed " + target.getUsername() + " has a " + numToCard(guessedCard) + "!");
                         if (target.getCard() === guessedCard) {
-                            this.game.sendMessage(target.getUsername() + " did have a " + numToCard(guessedCard) + "!");
+                            // this.game.sendMessage(target.getUsername() + " did have a " + numToCard(guessedCard) + "!");
+                            await this.game.sendEmbed(numToEmbed(guessedCard, target.getUsername() + " did have a " + numToCard(guessedCard) + "!"));
+                            // this.sendDM(target.getUsername() + " did have a " + numToCard(guessedCard) + "!");
+                            await this.sendDMEmbed(numToEmbed(guessedCard, target.getUsername() + " did have a " + numToCard(guessedCard) + "!"));
                             target.kill();
                         } else {
                             this.game.sendMessage(target.getUsername() + " did not have a " + numToCard(guessedCard));
+                            this.sendDM(target.getUsername() + " did not have a " + numToCard(guessedCard));
                         }
 
                         this.game.gameLoop();
@@ -776,20 +795,25 @@ class Player {
             case 2:
                 // dm the person who played the card what the target had.
                 this.game.sendMessage(this.getUsername() + " is looking at " + target.getUsername() + "'s card!");
+                this.sendDM("You are looking at " + target.getUsername() + "'s card!");
 
                 target.sendDM(this.getUsername() + " is looking at your card!");
 
-                this.sendDM(target.getUsername() + " has a " + numToCard(target.getCard()));
+                // this.sendDM(target.getUsername() + " has a " + numToCard(target.getCard()));
+                await this.sendDMEmbed(numToEmbed(target.getCard(), target.getUsername() + " has a " + numToCard(target.getCard())));
 
                 this.game.gameLoop();
                 break;
             case 3:
                 // message the server that a baron is happening & who the loser is
                 this.game.sendMessage(this.getUsername() + " is comparing cards with " + target.getUsername() + "!");
+                this.sendDM("You are comparing cards with " + target.getUsername() + "!");
 
-                target.sendDM(this.getUsername() + " has a " + numToCard(this.getCard()));
+                // target.sendDM(this.getUsername() + " has a " + numToCard(this.getCard()));
+                await target.sendDMEmbed(numToEmbed(this.getCard(), this.getUsername() + " has a " + numToCard(this.getCard())));
 
-                this.sendDM(target.getUsername() + " has a " + numToCard(target.getCard()));
+                // this.sendDM(target.getUsername() + " has a " + numToCard(target.getCard()));
+                await this.sendDMEmbed(numToEmbed(target.getCard(), target.getUsername() + " has a " + numToCard(target.getCard())));
 
                 let winner: Player, loser: Player;
 
@@ -804,6 +828,8 @@ class Player {
                     // tie :O
                     // message server that there was a tie!
                     this.game.sendMessage(this.getUsername() + " and " + target.getUsername() + "have the same card!");
+                    this.sendDM("You and " + target.getUsername() + " had the same card!");
+                    target.sendDM("You and " + this.getUsername() + " had the same card!");
 
                     // do nothing, start the next loop
                     this.game.gameLoop();
@@ -811,7 +837,10 @@ class Player {
                 }
 
                 this.game.sendMessage(loser.getUsername() + " lost to " + winner.getUsername() + "\n\n" + loser.getUsername() + " had a " + numToCard(loser.getCard()));
+                loser.sendDM("You had a lower card than " + winner.getUsername());
                 loser.kill();
+
+                winner.sendDM("You had a higher card than " + loser.getUsername());
 
                 this.game.gameLoop();
                 break;
@@ -819,11 +848,14 @@ class Player {
                 // message the server that the player is discarding & what that card is, then DM that player what their new card is
                 if (target !== this) {
                     this.game.sendMessage(this.getUsername() + " is making " + target.getUsername() + " discard their card!");
+                    target.sendDM(this.getUsername() + " is making you discard your " + numToCard(target.getCard()));
                 } else {
                     this.game.sendMessage(this.getUsername() + " is discarding their own card!");
+                    this.sendDM("You discarded your " + numToCard(this.getCard()));
                 }
 
-                this.game.sendMessage(target.getUsername() + " discarded a " + numToCard(target.getCard()));
+                // this.game.sendMessage(target.getUsername() + " discarded a " + numToCard(target.getCard()));
+                await this.game.sendEmbed(numToEmbed(target.getCard(), target.getUsername() + " discarded a " + numToCard(target.getCard())));
                 if (target.getCard() === 9) {
                     target.kill();
                 } else {
@@ -837,7 +869,8 @@ class Player {
                     if (target.getCard() === undefined) {
                         target.setCard(this.game.getBurn());
                     }
-                    target.sendDM("Your new card is a " + numToCard(target.getCard()));
+                    // target.sendDM("Your new card is a " + numToCard(target.getCard()));
+                    await target.sendDMEmbed(numToEmbed(target.getCard(), "Your new card is a " + numToCard(target.getCard())));
                 }
 
                 this.game.gameLoop();
@@ -856,9 +889,11 @@ class Player {
 
                 // DM both players their new cards.
 
-                target.sendDM(this.getUsername() + " gave you the " + numToCard(target.getCard()));
+                // target.sendDM(this.getUsername() + " gave you the " + numToCard(target.getCard()));
+                await target.sendDMEmbed(numToEmbed(target.getCard(), this.getUsername() + " gave you the " + numToCard(target.getCard())));
 
-                this.sendDM("You took the " + numToCard(this.getCard()) + " from " + target.getUsername() + "!");
+                // this.sendDM("You took the " + numToCard(this.getCard()) + " from " + target.getUsername() + "!");
+                await target.sendDMEmbed(numToEmbed(this.getCard(), "You took the " + numToCard(this.getCard()) + " from " + target.getUsername() + "!"));
 
                 this.game.gameLoop();
                 break;
@@ -872,10 +907,11 @@ class Player {
         this.card = notPlayedCard;
         this.handmaid = false;
 
-        this.game.sendMessage(this.getUsername() + " played the " + numToCard(playedCard));
+        // this.game.sendMessage(this.getUsername() + " played the " + numToCard(playedCard));
+        await this.game.sendEmbed(numToEmbed(playedCard, this.getUsername() + " played the " + numToCard(playedCard)));
         switch (playedCard) {
             case 0:
-                this.spy = true;
+                this.playSpy();
                 this.game.gameLoop();
                 break;
             case 1:
@@ -889,6 +925,7 @@ class Player {
                 break;
             case 4:
                 this.handmaid = true;
+                this.game.sendMessage(this.getUsername() + " is immune to card effects until their next turn");
                 this.game.gameLoop();
                 break;
             case 5:
@@ -896,8 +933,6 @@ class Player {
                 break;
             case 6:
                 // I HATE THE CHANCELLOR!!!!
-
-                this.game.sendMessage(this.getUsername() + " is thinking...");
 
                 const cardArr: number[] = [this.getCard()];
                 for (let i = 0; i < 2; i++) {
@@ -978,7 +1013,7 @@ class Player {
                                 // shoutout to my code for being impossible to read !!!!!
                                 // creates a reaction collector on each reaction that detects the corresponding emoji reaction
                                 followUpCollectors.push(followUp.createReactionCollector({
-                                    time: 120000, filter: (reaction, user) => {
+                                    filter: (reaction, user) => {
                                         return reaction.emoji.name === emojiArr.at(i) && !user.bot;
                                     }
                                 }));
@@ -1079,43 +1114,5 @@ class Deck {
 
     public addToDeck(card: number) {
         this.cards.unshift(card);
-    }
-}
-
-function numToCard(card: number) {
-    switch (card) {
-        case 0:
-            return "Spy";
-            break;
-        case 1:
-            return "Guard";
-            break;
-        case 2:
-            return "Priest";
-            break;
-        case 3:
-            return "Baron";
-            break;
-        case 4:
-            return "Handmaid";
-            break;
-        case 5:
-            return "Prince";
-            break;
-        case 6:
-            return "Chancellor";
-            break;
-        case 7:
-            return "King";
-            break;
-        case 8:
-            return "Countess";
-            break;
-        case 9:
-            return "Princess";
-            break;
-        default:
-            return "Not a valid card";
-            break;
     }
 }

@@ -118,6 +118,66 @@ client.on("interactionCreate", async (interaction) => {
                     "**0 - Spy** (x2): Gain favor if no one else plays/discards a Spy."
             });
         }
+
+        if (interaction.commandName === "ping") {
+            // this command is only registered in my test server
+
+            const file1 = new Discord.AttachmentBuilder('./assets/princess.jpeg');
+            const file2 = new Discord.AttachmentBuilder('./assets/guard.jpeg');
+
+            let firstEmbed = true;
+
+            const embed1 = new Discord.EmbedBuilder()
+                .setColor(0x8B0000)
+                .setTitle("Princess")
+                .setImage("attachment://princess.jpeg")
+                .setDescription("If you play or discard this card, \nyou are out of the round")
+                .setFooter({ text: "▶️: See other card\n✅: Play the Princess" });
+
+            const embed2 = new Discord.EmbedBuilder()
+                .setColor(0x8B0000)
+                .setTitle("Guard")
+                .setImage("attachment://guard.jpeg")
+                .setDescription("Fkn whatever man who cares")
+                .setFooter({ text: "▶️: See other card\n✅: Play the Guard" });
+
+            const message = await interaction.reply({ embeds: [embed1], files: [file1], fetchReply: true });
+
+            message.react('▶️');
+            message.react('✅');
+
+            const nextCollector = message.createReactionCollector({
+                filter: (reaction, user) => {
+                    return !user.bot && reaction.emoji.name === '▶️';
+                }
+            });
+
+            const playCollector = message.createReactionCollector({
+                filter: (reaction, user) => {
+                    return !user.bot && reaction.emoji.name === '✅';
+                }
+            });
+
+            nextCollector.on("collect", async (reaction, user) => {
+                // remove the reaction
+                interaction.editReply({ embeds: [firstEmbed ? embed2 : embed1], files: [firstEmbed ? file2 : file1] });
+                firstEmbed = !firstEmbed;
+
+                const userReactions = message.reactions.cache.filter(reaction => reaction.users.cache.has(user.id));
+
+                for (const reaction of userReactions.values()) {
+                    reaction.users.remove(user.id);
+                }
+            });
+
+            playCollector.on("collect", (reaction, user) => {
+                interaction.followUp("You played the " + (firstEmbed ? "Princess" : "Guard"));
+                playCollector.stop();
+                nextCollector.stop();
+            });
+
+            // probably create a cardEmbed type that holds the embed and the file for the card, then that can be thrown around to the messages in loveLetter.ts
+        }
     }
 });
 

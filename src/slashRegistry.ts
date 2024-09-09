@@ -18,6 +18,7 @@ export const slashRegister = async (serverID) => {
                 new SlashCommandBuilder().setName("startgame").setDescription("Start a game of Love Letter"),
                 new SlashCommandBuilder().setName("github").setDescription("Look at the code for this bot"),
                 new SlashCommandBuilder().setName("infocard").setDescription("Look at the description for each card"),
+                new SlashCommandBuilder().setName("ping").setDescription("my test command, you shouldnt be able to see this :O")
             ],
         });
     } catch (error) {
