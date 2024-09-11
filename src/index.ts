@@ -1,6 +1,7 @@
 import * as Discord from "discord.js";
 import { LoveLetter } from "./loveLetter";
 import { slashRegister } from "./slashRegistry";
+import { numToCard, numToEmbed } from "./cardConverters";
 
 require("dotenv").config();
 
@@ -122,26 +123,18 @@ client.on("interactionCreate", async (interaction) => {
         if (interaction.commandName === "ping") {
             // this command is only registered in my test server
 
-            const file1 = new Discord.AttachmentBuilder('./assets/princess.jpeg');
-            const file2 = new Discord.AttachmentBuilder('./assets/guard.jpeg');
 
             let firstEmbed = true;
 
-            const embed1 = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle("Princess")
-                .setImage("attachment://princess.jpeg")
-                .setDescription("If you play or discard this card, \nyou are out of the round")
-                .setFooter({ text: "▶️: See other card\n✅: Play the Princess" });
+            const embed1 = numToEmbed(9, numToCard(9));
+            embed1.embed.setFooter({ text: "▶️: See other card\n✅: Play the Princess" });
+            const file1 = embed1.file
 
-            const embed2 = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle("Guard")
-                .setImage("attachment://guard.jpeg")
-                .setDescription("Fkn whatever man who cares")
-                .setFooter({ text: "▶️: See other card\n✅: Play the Guard" });
+            const embed2 = numToEmbed(0, numToCard(0));
+            embed2.embed.setFooter({ text: "▶️: See other card\n✅: Play the " + numToCard(0) });
+            const file2 = embed2.file
 
-            const message = await interaction.reply({ embeds: [embed1], files: [file1], fetchReply: true });
+            const message = await interaction.reply({ embeds: [embed1.embed], files: [file1], fetchReply: true });
 
             message.react('▶️');
             message.react('✅');
@@ -160,7 +153,7 @@ client.on("interactionCreate", async (interaction) => {
 
             nextCollector.on("collect", async (reaction, user) => {
                 // remove the reaction
-                interaction.editReply({ embeds: [firstEmbed ? embed2 : embed1], files: [firstEmbed ? file2 : file1] });
+                interaction.editReply({ embeds: [firstEmbed ? embed2.embed : embed1.embed], files: [firstEmbed ? file2 : file1] });
                 firstEmbed = !firstEmbed;
 
                 const userReactions = message.reactions.cache.filter(reaction => reaction.users.cache.has(user.id));
@@ -171,7 +164,7 @@ client.on("interactionCreate", async (interaction) => {
             });
 
             playCollector.on("collect", (reaction, user) => {
-                interaction.followUp("You played the " + (firstEmbed ? "Princess" : "Guard"));
+                interaction.followUp("You played the " + (firstEmbed ? numToCard(9) : numToCard(0)));
                 playCollector.stop();
                 nextCollector.stop();
             });

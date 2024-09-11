@@ -46,115 +46,84 @@ export type cardEmbed = {
 export function numToEmbed(card: number, title: string) {
 
     let file: Discord.AttachmentBuilder;
-    let embed: Discord.EmbedBuilder;
+    let embed: Discord.EmbedBuilder = new Discord.EmbedBuilder()
+        .setColor(0x8B0000)
+        .setTitle(title)
     switch (card) {
         case 0:
             file = new Discord.AttachmentBuilder('./assets/spy.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://spy.jpeg")
+            embed.setImage("attachment://spy.jpeg")
                 .setDescription("At the end of the round, if you are the\nonly player in the round who played or\ndiscarded a Spy, you gain 1 favor.");
 
             return { embed, file };
         case 1:
             file = new Discord.AttachmentBuilder('./assets/guard.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://guard.jpeg")
+            embed.setImage("attachment://guard.jpeg")
                 .setDescription("Choose another player and name a\nnon-Guard card. If that player has that\ncard, they are out of the round");
 
             return { embed, file };
         case 2:
             file = new Discord.AttachmentBuilder('./assets/priest.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://priest.jpeg")
+            embed.setImage("attachment://priest.jpeg")
                 .setDescription("Choose and look at another player's hand.");
 
             return { embed, file };
         case 3:
             file = new Discord.AttachmentBuilder('./assets/baron.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://baron.jpeg")
+            embed.setImage("attachment://baron.jpeg")
                 .setDescription("Choose and secretly compare hands\nwith another player. Whoever has\nthe lower value is out of the round.");
 
             return { embed, file };
         case 4:
             file = new Discord.AttachmentBuilder('./assets/handmaid.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://handmaid.jpeg")
+            embed.setImage("attachment://handmaid.jpeg")
                 .setDescription("Until your next turn, other\nplayers cannot choose you\nfor their card effects.");
 
             return { embed, file };
         case 5:
             file = new Discord.AttachmentBuilder('./assets/prince.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://prince.jpeg")
+            embed.setImage("attachment://prince.jpeg")
                 .setDescription("Choose any player (including\nyourself). That player discards\ntheir hand and redraws.");
 
             return { embed, file };
         case 6:
             file = new Discord.AttachmentBuilder('./assets/chancellor.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://chancellor.jpeg")
+            embed.setImage("attachment://chancellor.jpeg")
                 .setDescription("Draw 2 cards. Keep 1 card and\nput your other 2 on the bottom\nof the deck in any order.");
 
             return { embed, file };
         case 7:
             file = new Discord.AttachmentBuilder('./assets/king.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://king.jpeg")
+            embed.setImage("attachment://king.jpeg")
                 .setDescription("Choose and trade hands with another player.");
 
             return { embed, file };
         case 8:
             file = new Discord.AttachmentBuilder('./assets/countess.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://countess.jpeg")
+            embed.setImage("attachment://countess.jpeg")
                 .setDescription("If the King or Prince is in your\nhand, you must play this card.");
 
             return { embed, file };
         case 9:
             file = new Discord.AttachmentBuilder('./assets/princess.jpeg');
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle(title)
-                .setImage("attachment://princess.jpeg")
+            embed.setImage("attachment://princess.jpeg")
                 .setDescription("If you play or discard this card, \nyou are out of the round.");
 
             return { embed, file };
         default:
             file = new Discord.AttachmentBuilder("./assets/guard.jpeg");
 
-            embed = new Discord.EmbedBuilder()
-                .setColor(0x8B0000)
-                .setTitle("Error")
-                .setImage("attachment://guard.jpeg")
+            embed.setImage("attachment://guard.jpeg")
                 .setDescription("Not a valid card value");
 
             return { embed, file };
